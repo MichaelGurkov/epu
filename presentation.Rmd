@@ -1,0 +1,79 @@
+---
+title: "Measuring Economic Policy Uncertainty for the Israeli Economy"
+author: "Yaakov Chen-Zion, Michael Gurkov and Nimrod Segev"
+institute: "Bank of Israel \\newline Research Department \\newline \\newline Any views expressed in the Discussion Paper are those of the authors and do not necessarily reflect those of the Bank of Israel"
+date: "16 June, 2021"
+classoption: t
+output:
+  beamer_presentation:
+    includes:
+      in_header: !expr here::here('PresentationPreamble.tex')
+    latex_engine: xelatex
+    slide_level: 2
+# bibliography: "GaR.bib"
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, echo = FALSE, message = FALSE,
+  warning = FALSE, comment = "#>"
+
+)
+```
+
+
+```{r load_libraries}
+
+library(tidyverse)
+
+library(lubridate)
+
+library(glue)
+
+library(xts)
+
+```
+
+```{r import_data}
+
+epu_month = read_csv(glue(Sys.getenv("USERPROFILE"),
+                       "\\OneDrive - Bank Of Israel\\Data\\",
+                       "EPU\\TDM-JP\\temp_epu_month.csv")) %>% 
+  select(date = time_period, epu = epu_scaled)
+
+
+
+```
+
+
+# Methodology
+
+ * Economic - economy, economic
+ * Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
+    parliament, regulation, deregulation, legislation, taxes, tax, taxation,
+    taxed, policy,spending, budget.
+ * Uncertainty - uncertainty, uncertain, not certain.
+
+
+#
+
+```{r plot_epu}
+
+events_df = tribble(~event, ~start_date, ~end_date,
+                    "Intifada","2001-01-01","2003-01-01",
+                    "GFC","2008-01-01","2009-01-01",
+                    "Coona","2020-01-01","2021-01-01") %>% 
+  mutate(across(ends_with("date"),as_date))
+
+
+ggplot() + 
+  geom_line(data = epu_month, aes(x = date, y = epu)) + 
+  geom_rect(data = events_df, aes(xmin = start_date, xmax = end_date,
+                                  ymin = -Inf, ymax = Inf),
+            alpha = 0.5, fill = "lightblue") +
+  xlab(NULL) + ylab(NULL) + 
+  ggtitle("Economic policy uncertainty index for Israel")
+
+```
+
