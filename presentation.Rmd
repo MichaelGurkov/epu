@@ -25,40 +25,28 @@ knitr::opts_chunk$set(
 
 ```{r load_libraries}
 
-library(tidyverse)
-
 library(lubridate)
 
 library(glue)
 
 library(xts)
 
+library(slider)
+
+library(readxl)
+
+library(corrr)
+
+library(vars)
+
+library(aTSA)
+
+library(tidyverse)
+
 ```
 
-```{r import_data}
 
-epu_month = read_csv(glue(Sys.getenv("USERPROFILE"),
-                       "\\OneDrive - Bank Of Israel\\Data\\",
-                       "EPU\\TDM-JP\\temp_epu_month.csv")) %>% 
-  select(date = time_period, epu = epu_scaled)
-
-
-
-```
-
-
-# Methodology
-
- * Economic - economy, economic
- * Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
-    parliament, regulation, deregulation, legislation, taxes, tax, taxation,
-    taxed, policy,spending, budget.
- * Uncertainty - uncertainty, uncertain, not certain.
-
-
-#
-
-```{r plot_epu}
+```{r set_params}
 
 events_df = tribble(~event, ~start_date, ~end_date,
                     "Intifada","2001-01-01","2003-01-01",
@@ -67,6 +55,134 @@ events_df = tribble(~event, ~start_date, ~end_date,
   mutate(across(ends_with("date"),as_date))
 
 
+```
+
+
+```{r import_data_epu}
+
+epu_month = read_csv(glue(Sys.getenv("USERPROFILE"),
+                       "\\OneDrive - Bank Of Israel\\Data\\",
+                       "EPU\\TDM-JP\\temp_epu_month.csv")) %>% 
+  dplyr::select(date = time_period, epu = epu_scaled)
+
+
+epu_month_topics = read_csv(glue(Sys.getenv("USERPROFILE"),
+                       "\\OneDrive - Bank Of Israel\\Data\\",
+                       "EPU\\TDM-JP\\temp_epu_month_topics.csv")) %>% 
+  dplyr::select(date = time_period, monetary_epu = monetary_epu_scaled,
+         fiscal_epu = fiscal_epu_scaled) %>%
+  mutate(date = as_date(paste0(date,"-01"))) %>% 
+  pivot_longer(-date)
+
+
+
+```
+
+```{r import_epus}
+
+url_table = tribble(
+  ~ name, ~ file_name,~ var_name,
+  "usa","US_Policy_Uncertainty_Data","News_Based_Policy_Uncert_Index",
+  "global","Global_Policy_Uncertainty_Data", "GEPU_current"
+)
+
+epus_df = pmap(url_table,function(name, file_name, var_name){
+  
+  temp_df = read_xlsx(glue(Sys.getenv("USERPROFILE"),
+                           "\\OneDrive - Bank Of Israel\\Data\\EPU",
+                           "\\epus\\",file_name, ".xlsx"))
+  
+  temp_df = temp_df %>% 
+    mutate(Month = str_pad(Month,side = "left",width = 2,pad = "0")) %>% 
+    mutate(date = as_date(paste(Year,Month,"01", sep = "-"))) %>% 
+    dplyr::select(date, !!sym(name) := all_of(var_name))
+      
+  
+  return(temp_df)
+
+  
+}) %>% 
+  reduce(inner_join, "date")
+
+rm(url_table)
+
+```
+
+```{r import_var_data}
+
+vars_list = c("epu", "fx_us", "ta_125", "i_il", "emp_il_sa",
+              "gdp_il_sa","fx_eff")
+
+var_df = read_excel(glue(Sys.getenv("USERPROFILE"),
+                         "\\OneDrive - Bank Of Israel",
+                         "\\Data\\EPU\\EPUI",
+                         "\\EPUI_Data_activity_ALL_q.xlsx"),
+                    sheet = "DATA")
+
+var_df = var_df %>%
+  mutate(date = as.yearqtr(paste0(year,"Q",quarter))) %>% 
+  select(date,any_of(vars_list),starts_with("fx")) %>%
+  mutate(fx_eff = if_else(year(date) > 1999,
+                          fx_ner_ef,
+                          0.75 * fx_us + 0.07 * fx_japan + 0.18 * fx_uk)) %>%
+  mutate(across(vars_list,log)) %>%
+  mutate(across(vars_list, lag,.names = "l_{.col}")) %>% 
+  filter(date >= as.yearqtr("1999Q2") & year(date) <= 2019)
+
+rm(vars_list)
+
+```
+
+
+
+## Outline
+
+\tableofcontents[sectionstyle=show/show,subsectionstyle=hide/hide]
+
+## Motivation
+
+\begin {itemize}
+\itemsep3em
+	\item
+	Literature suggests that fluctuations in uncertainty
+	might have a significant impact on real economic activity
+	(\textcolor{red}{add citation}) (Bloom 2009; Caggiano,
+	Castelnuovo, and Groshenny 2014; Caldara et al. 2016)
+	\item
+	
+	\item
+	We construct the Israeli Economic Policy Uncertainty index
+
+
+\end{itemize}
+
+
+
+# Methodology
+
+Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
+  long and consistent daily coverage of Israeli news
+  exact same phrases used by Baker, Bloom, and Davis (2016)
+
+ * Economic - economy, economic
+ * Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
+    parliament, regulation, deregulation, legislation, taxes, tax, taxation,
+    taxed, policy,spending, budget.
+ * Uncertainty - uncertainty, uncertain, not certain.
+
+# Methodology
+
+\begin{enumerate}
+  \item
+  Calculate the proportion of "relevant" articles in each time period (month/quarter)
+  \item
+  Standardize to unit standard deviation and normalize to a mean of 100 
+\end{enumerate}
+
+#
+
+```{r plot_epu}
+
 ggplot() + 
   geom_line(data = epu_month, aes(x = date, y = epu)) + 
   geom_rect(data = events_df, aes(xmin = start_date, xmax = end_date,
@@ -74,6 +190,168 @@ ggplot() +
             alpha = 0.5, fill = "lightblue") +
   xlab(NULL) + ylab(NULL) + 
   ggtitle("Economic policy uncertainty index for Israel")
+
+```
+
+#
+
+```{r benchmark_correlation}
+
+full_period_plot = epu_month %>%
+  inner_join(epus_df, "date") %>%
+  dplyr::select(-date,israel = epu) %>%
+  filter(complete.cases(.)) %>%
+  cor() %>%
+  ggcorrplot::ggcorrplot(type = "lower",
+                         show.diag = FALSE,
+                         lab = TRUE,
+                         ggtheme = theme_light()) + 
+  ggtitle("Full Period")
+
+after_gfc_plot = epu_month %>%
+  inner_join(epus_df, "date") %>%
+  filter(date >= as_date("2009-01-01")) %>% 
+  dplyr::select(-date,israel = epu) %>%
+  filter(complete.cases(.)) %>%
+  cor() %>%
+  ggcorrplot::ggcorrplot(type = "lower",
+                         show.diag = FALSE,
+                         lab = TRUE,
+                         ggtheme = theme_light()) + 
+  ggtitle("After GFC")
+
+legend_row = cowplot::get_legend(full_period_plot + 
+                                   theme(legend.box.margin = margin(0, 0, 0, 12)))
+
+cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
+                   after_gfc_plot + theme(legend.position = "none"),
+                   legend_row,nrow = 1,scale = 1,axis = "l",
+                   rel_widths = c(2,2,0.5))
+
+
+```
+
+# Topics EPU
+
+  * Fiscal - budget, deficit, government debt, tax, taxes, taxation,
+  taxed, fiscal, military spending, defense spending, balanced budget,
+  national debt.
+  
+  * Monetary - boi, bank of israel, money supply, open market
+  operations, quantitive easing, monetary policy, policy rate.
+
+
+```{r plot_epu_topics}
+
+ggplot() +
+  geom_line(data = epu_month_topics %>%
+              mutate(name = factor(name,
+                                   labels = c("Fiscal EPU", "Monetary EPU"))),
+            aes(x = date, y = value, color = name)) +
+  geom_rect(data = events_df,aes(xmin = start_date,xmax = end_date,
+                                 ymin = -Inf,ymax = Inf),
+            alpha = 0.5, fill = "lightblue") +
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Economic policy uncertainty index for Israel") + 
+  theme(legend.title = element_blank())
+
+```
+
+#
+
+```{r plot_rolling_cor}
+
+epu_month_topics %>%
+  pivot_wider(id_cols = date) %>%
+  mutate(roll_cor = slide2_dbl(
+    .x = monetary_epu,
+    .y = fiscal_epu,
+    .f = ~ cor(.x, .y),
+    .before = 10*12,
+    .complete = TRUE
+  )) %>% 
+  filter(complete.cases(.)) %>% 
+  ggplot(aes(x = date, y = roll_cor)) + 
+  geom_line() + 
+  xlab(NULL) + ylab(NULL) + 
+  ggtitle(glue("10 year Rolling Correlations",
+               " Between Monetary and Fiscal EPU indices"))
+
+```
+
+# VAR
+
+\begin{equation}
+  Z_{t} = B Z_{t - 1} + u_{t}
+\end{equation}
+
+where:
+
+Z - vector of economic policy uncertainty, the employment rate,
+the nominal effective exchange rate, the nominal interest rate and
+the GDP
+
+B - coefficient matrix
+
+$u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covariance matrix $\Sigma = E[u_{t}u_{t}']$
+
+# VAR extimation results
+
+```{r}
+
+gdp_irf =  var_df  %>%
+  dplyr::select(epu, fx_eff, i_il, emp_il_sa, gdp_il_sa)  %>%
+  ts(start = c(1995, 2), frequency = 4)  %>%
+  VAR(p = 8, type = "both")  %>%
+  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu",response = "gdp_il_sa")
+
+df |>
+select(epu, fx_eff, i_il, emp_il_sa, gdp_il_sa) |>
+ts(start = c(1995, 2), frequency = 4) |>
+VAR(p = 8, ic = "AIC", type = "both", lag.max = 8) |>
+irf(n.ahead = 6, runs = 1000, ci = 0.90, impulse = "epu", response = "gdp_il_sa")
+
+
+
+
+
+
+```
+
+
+```{r}
+
+unlist_irf_list = function(temp_list){
+  
+  var_names = c("irf","Lower","Upper")
+  
+  temp_df = map_dfc(var_names, function(temp_name){
+    
+    return(temp_list %>% 
+      pluck(temp_name) %>% 
+      unlist(use.names = FALSE))
+ 
+  }) %>% 
+    set_names(var_names) %>% 
+    rename_all(tolower)
+  
+  
+  
+  
+}
+
+```
+
+
+```{r plot_var}
+
+temp_df %>% 
+  rownames_to_column(var = "lags") %>% 
+  ggplot(aes(x = lags, y = irf, group = 1)) + 
+  geom_line() + 
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  geom_ribbon(aes(x = lags, ymax = upper, ymin = lower),
+              fill = "lightblue", alpha = 0.3)
 
 ```
 
