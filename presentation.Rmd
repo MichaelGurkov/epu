@@ -158,7 +158,7 @@ rm(vars_list)
 
 
 
-# Methodology
+## Methodology
 
 Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
   long and consistent daily coverage of Israeli news
@@ -170,7 +170,7 @@ Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
     taxed, policy,spending, budget.
  * Uncertainty - uncertainty, uncertain, not certain.
 
-# Methodology
+## Methodology
 
 \begin{enumerate}
   \item
@@ -179,7 +179,7 @@ Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
   Standardize to unit standard deviation and normalize to a mean of 100 
 \end{enumerate}
 
-#
+##
 
 ```{r plot_epu}
 
@@ -193,7 +193,7 @@ ggplot() +
 
 ```
 
-#
+##
 
 ```{r benchmark_correlation}
 
@@ -231,7 +231,7 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
 
 ```
 
-# Topics EPU
+## Topics EPU
 
   * Fiscal - budget, deficit, government debt, tax, taxes, taxation,
   taxed, fiscal, military spending, defense spending, balanced budget,
@@ -257,7 +257,8 @@ ggplot() +
 
 ```
 
-#
+
+##
 
 ```{r plot_rolling_cor}
 
@@ -279,7 +280,7 @@ epu_month_topics %>%
 
 ```
 
-# VAR
+## VAR
 
 \begin{equation}
   Z_{t} = B Z_{t - 1} + u_{t}
@@ -295,23 +296,47 @@ B - coefficient matrix
 
 $u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covariance matrix $\Sigma = E[u_{t}u_{t}']$
 
-# VAR extimation results
 
-```{r}
+## VAR estimation results
 
-gdp_irf =  var_df  %>%
+```{r }
+
+var_irf =  var_df  %>%
   dplyr::select(epu, fx_eff, i_il, emp_il_sa, gdp_il_sa)  %>%
   ts(start = c(1995, 2), frequency = 4)  %>%
   VAR(p = 8, type = "both")  %>%
-  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu",response = "gdp_il_sa")
-
-df |>
-select(epu, fx_eff, i_il, emp_il_sa, gdp_il_sa) |>
-ts(start = c(1995, 2), frequency = 4) |>
-VAR(p = 8, ic = "AIC", type = "both", lag.max = 8) |>
-irf(n.ahead = 6, runs = 1000, ci = 0.90, impulse = "epu", response = "gdp_il_sa")
+  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu")
 
 
+map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
+  return(
+    var_irf %>%
+      pluck(temp_name, 1) %>%
+      as_tibble() %>%
+      rownames_to_column(var = "lag") %>%
+      pivot_longer(-lag) %>%
+      mutate(category = temp_name)
+  )
+  
+  
+}) %>%
+  pivot_wider(names_from = category) %>%
+  rename_all(tolower) %>%
+  filter(!name == "epu") %>%
+  # mutate(lag = as.numeric(lag)) %>%
+  mutate(name = factor(name,
+    levels = c("gdp_il_sa", "emp_il_sa", "i_il", "fx_eff"),
+    labels = c("GDP", "Employment", "Interest rate", "Exchange rate"))) %>% 
+  ggplot() +
+  geom_line(aes(x = lag, y = irf, group = 1)) +
+  geom_ribbon(aes(x = lag, ymax = upper, ymin = lower, group = 1),
+              fill = "lightblue",
+              alpha = 0.5) +
+  geom_hline(yintercept = 0,
+             linetype = "dashed",
+             color = "red") +
+  xlab(NULL) + ylab(NULL) + ggtitle("Effect of orthogonal EPU shock") + 
+  facet_wrap( ~ name, scales = "free")
 
 
 
@@ -319,7 +344,7 @@ irf(n.ahead = 6, runs = 1000, ci = 0.90, impulse = "epu", response = "gdp_il_sa"
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 
 unlist_irf_list = function(temp_list){
   
@@ -343,7 +368,7 @@ unlist_irf_list = function(temp_list){
 ```
 
 
-```{r plot_var}
+```{r plot_var, eval=FALSE}
 
 temp_df %>% 
   rownames_to_column(var = "lags") %>% 
