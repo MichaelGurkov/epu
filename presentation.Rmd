@@ -48,10 +48,14 @@ library(tidyverse)
 
 ```{r set_params}
 
-events_df = tribble(~event, ~start_date, ~end_date,
-                    "Intifada","2001-01-01","2003-01-01",
-                    "GFC","2008-01-01","2009-01-01",
-                    "Coona","2020-01-01","2021-01-01") %>% 
+events_df = tribble(~event, ~category, ~start_date, ~end_date,
+                    "Intifada","crisis","2001-01-01","2003-01-01",
+                    "GFC","crisis","2008-01-01","2009-01-01",
+                    "Corona","crisis","2020-01-01","2021-01-01",
+                    "Ariel Sharon","political","2006-01-01","2006-02-01",
+                    "Social Justice","political","2011-06-01","2011-12-01",
+                    "Brexit","international","2016-06-01","2016-07-01",
+                    "Trump","international","2016-11-01","2016-12-01") %>% 
   mutate(across(ends_with("date"),as_date))
 
 
@@ -124,10 +128,10 @@ var_df = var_df %>%
   select(date,any_of(vars_list),starts_with("fx")) %>%
   mutate(fx_eff = if_else(year(date) > 1999,
                           fx_ner_ef,
-                          0.75 * fx_us + 0.07 * fx_japan + 0.18 * fx_uk)) %>%
-  mutate(across(vars_list,log)) %>%
-  mutate(across(vars_list, lag,.names = "l_{.col}")) %>% 
-  filter(date >= as.yearqtr("1999Q2") & year(date) <= 2019)
+                          0.75 * log(fx_us) + 0.07 * fx_japan + 0.18 * fx_uk)) %>%
+  mutate(across(any_of(vars_list),log,.names = "{.col}_log")) %>%
+  mutate(across(any_of(vars_list), lag,.names = "l_{.col}")) %>% 
+  filter(date >= as.yearqtr("1995Q2") & year(date) <= 2019)
 
 rm(vars_list)
 
@@ -145,11 +149,21 @@ rm(vars_list)
 \itemsep3em
 	\item
 	Literature suggests that fluctuations in uncertainty
-	might have a significant impact on real economic activity
+	might have a significant impact on economic activity
 	(\textcolor{red}{add citation}) (Bloom 2009; Caggiano,
 	Castelnuovo, and Groshenny 2014; Caldara et al. 2016)
-	\item
+	\begin{itemize}
+	  \item
+	  Employment and industrial investment
+	  \item
+	  Monetary policy transmission and inflation expectations
+	  \item
+	  Bank credit growth and financial stability
+	\end{itemize}
 	
+	\item
+	A growing number of papers develop a country and region-specific EPU indexes
+
 	\item
 	We construct the Israeli Economic Policy Uncertainty index
 
@@ -179,21 +193,31 @@ Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
   Standardize to unit standard deviation and normalize to a mean of 100 
 \end{enumerate}
 
-##
+## EPU seems to capture important domestic and international events
 
 ```{r plot_epu}
 
-ggplot() + 
-  geom_line(data = epu_month, aes(x = date, y = epu)) + 
-  geom_rect(data = events_df, aes(xmin = start_date, xmax = end_date,
-                                  ymin = -Inf, ymax = Inf),
-            alpha = 0.5, fill = "lightblue") +
-  xlab(NULL) + ylab(NULL) + 
+
+ggplot() +
+  geom_line(data = epu_month, aes(x = date, y = epu)) +
+  geom_rect(data = filter(events_df,category == "crisis"),
+            aes(xmin = start_date,xmax = end_date,ymin = -Inf,ymax = Inf),
+            alpha = 0.5,fill = "lightblue") +
+  geom_text(data = filter(events_df,category == "political"),
+            aes(x = start_date, y = c(450,550), label = event),
+            color = "blue") +
+  geom_segment(data = events_df %>% 
+              filter(category == "political") %>% 
+              left_join(epu_month, by = c("start_date" = "date")),
+              aes(x = start_date, y = c(430,530),
+                  xend = start_date, yend = epu + 10),
+              color = "blue", arrow = arrow(length = unit(4, "points"))) +
+  xlab(NULL) + ylab(NULL) +
   ggtitle("Economic policy uncertainty index for Israel")
 
 ```
 
-##
+## EPU tends to move together with other measures of uncertainty
 
 ```{r benchmark_correlation}
 
@@ -241,6 +265,8 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
   operations, quantitive easing, monetary policy, policy rate.
 
 
+## High levels of Monetary and Fiscal uncertainty during "local" crises
+
 ```{r plot_epu_topics}
 
 ggplot() +
@@ -258,7 +284,7 @@ ggplot() +
 ```
 
 
-##
+## Corellation between Monetary and Fiscal uncertainty drops after 2012
 
 ```{r plot_rolling_cor}
 
@@ -299,13 +325,58 @@ $u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covar
 
 ## VAR estimation results
 
-```{r }
+```{r plot_log_levels}
 
 var_irf =  var_df  %>%
-  dplyr::select(epu, fx_eff, i_il, emp_il_sa, gdp_il_sa)  %>%
+  dplyr::select(epu_log, fx_eff_log, i_il_log, emp_il_sa_log, gdp_il_sa_log)  %>%
   ts(start = c(1995, 2), frequency = 4)  %>%
   VAR(p = 8, type = "both")  %>%
-  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu")
+  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu_log")
+
+
+map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
+  return(
+    var_irf %>%
+      pluck(temp_name, 1) %>%
+      as_tibble() %>%
+      rownames_to_column(var = "lag") %>%
+      pivot_longer(-lag) %>%
+      mutate(category = temp_name)
+  )
+  
+  
+}) %>%
+  pivot_wider(names_from = category) %>%
+  rename_all(tolower) %>%
+  filter(!name == "epu_log") %>%
+  mutate(name = factor(name,
+    levels = c("gdp_il_sa_log", "emp_il_sa_log", "i_il_log", "fx_eff_log"),
+    labels = c("GDP", "Employment", "Interest rate", "Exchange rate"))) %>% 
+  ggplot() +
+  geom_line(aes(x = lag, y = irf, group = 1)) +
+  geom_ribbon(aes(x = lag, ymax = upper, ymin = lower, group = 1),
+              fill = "lightblue",
+              alpha = 0.2) +
+  geom_hline(yintercept = 0,
+             linetype = "dashed",
+             color = "red") +
+  xlab(NULL) + ylab(NULL) + ggtitle("Effect of orthogonal EPU shock") + 
+  facet_wrap( ~ name, scales = "free")
+
+
+
+
+```
+
+
+```{r plot_log_delta}
+
+var_irf =  var_df  %>%
+  dplyr::select(epu_log, fx_eff_log, i_il_log, emp_il_sa_log, gdp_il_sa_log) %>%
+  dplyr::rename_all(~str_remove(.,"_log")) %>% 
+  ts(start = c(1995, 2), frequency = 4)  %>%
+  VAR(p = 8, ic = "AIC", type = "both", lag.max = 8)  %>%
+  irf(n.ahead = 6,runs = 500,ci = 0.90,impulse = "epu")
 
 
 map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
@@ -323,7 +394,6 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   pivot_wider(names_from = category) %>%
   rename_all(tolower) %>%
   filter(!name == "epu") %>%
-  # mutate(lag = as.numeric(lag)) %>%
   mutate(name = factor(name,
     levels = c("gdp_il_sa", "emp_il_sa", "i_il", "fx_eff"),
     labels = c("GDP", "Employment", "Interest rate", "Exchange rate"))) %>% 
@@ -340,43 +410,6 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 
 
 
-
-```
-
-
-```{r, eval=FALSE}
-
-unlist_irf_list = function(temp_list){
-  
-  var_names = c("irf","Lower","Upper")
-  
-  temp_df = map_dfc(var_names, function(temp_name){
-    
-    return(temp_list %>% 
-      pluck(temp_name) %>% 
-      unlist(use.names = FALSE))
- 
-  }) %>% 
-    set_names(var_names) %>% 
-    rename_all(tolower)
-  
-  
-  
-  
-}
-
-```
-
-
-```{r plot_var, eval=FALSE}
-
-temp_df %>% 
-  rownames_to_column(var = "lags") %>% 
-  ggplot(aes(x = lags, y = irf, group = 1)) + 
-  geom_line() + 
-  geom_hline(yintercept = 0, linetype = "dashed") + 
-  geom_ribbon(aes(x = lags, ymax = upper, ymin = lower),
-              fill = "lightblue", alpha = 0.3)
 
 ```
 
