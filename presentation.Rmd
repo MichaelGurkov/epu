@@ -2,7 +2,7 @@
 title: "Measuring Economic Policy Uncertainty for the Israeli Economy"
 author: "Yaakov Chen-Zion, Michael Gurkov and Nimrod Segev"
 institute: "Bank of Israel \\newline Research Department \\newline \\newline Any views expressed in the Discussion Paper are those of the authors and do not necessarily reflect those of the Bank of Israel"
-date: "16 June, 2021"
+date: "13 December, 2021"
 classoption: t
 output:
   beamer_presentation:
@@ -136,6 +136,25 @@ var_df = var_df %>%
 
 ```
 
+```{r run_var, cache=TRUE}
+
+irf_df =  var_df  %>%
+  dplyr::select(epu_log, fx_eff_log, i_il_log, emp_il_sa_log, gdp_il_sa_log)  %>%
+  ts(start = c(1995, 2), frequency = 4)  %>%
+  VAR(p = 8, ic = "AIC", type = "both", lag.max = 8)  %>%
+  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu_log")
+
+var_irf_delta =  var_df  %>%
+  dplyr::select(paste0(vars_list,"_log_diff")) %>%
+  dplyr::rename_all(~str_remove(.,"_log_diff")) %>% 
+  filter(complete.cases(.)) %>% 
+  ts(start = c(1995, 2), frequency = 4)  %>%
+  VAR(p = 8, ic = "AIC", type = "both", lag.max = 8)  %>%
+  irf(n.ahead = 6,cumulative = TRUE,runs = 1000,ci = 0.90,impulse = "epu")
+
+
+
+```
 
 
 ## Outline
@@ -144,52 +163,97 @@ var_df = var_df %>%
 
 ## Motivation
 
-\begin {itemize}
-\itemsep3em
-	\item
-	Literature suggests that fluctuations in uncertainty
-	might have a significant impact on economic activity
-	(\textcolor{red}{add citation}) (Bloom 2009; Caggiano,
-	Castelnuovo, and Groshenny 2014; Caldara et al. 2016)
-	\begin{itemize}
-	  \item
-	  Employment and industrial investment
-	  \item
-	  Monetary policy transmission and inflation expectations
-	  \item
-	  Bank credit growth and financial stability
-	\end{itemize}
-	
-	\item
-	A growing number of papers develop a country and region-specific EPU indexes
+Literature suggests that fluctuations in uncertainty might have a significant impact on economic activity
 
-	\item
-	We construct the Israeli Economic Policy Uncertainty index
+\vfill
 
-
+\begin{itemize}
+  \item
+  Employment and industrial investment
+  \newline
+  (Bloom 2009)
+  \item
+  Monetary policy transmission and inflation expectations 
+  \newline
+  (Aastveit, Natvik, and Sola 2017)
+  \item
+  Bank credit growth 
+  \newline
+  (Bordo, Duca, and Koch 2016)
+  \item
+  Financial stability 
+  \newline
+  (Phan et al. 2021)
+  \item
+  De-anchorage of long-term in inflation expectations 
+  \newline
+  (Dash, Rohit, and Devaguptapu 2020)
 \end{itemize}
 
+## Motivation
+
+A growing number of papers develop a country and region-specific EPU indexes
+
+\begin{itemize}
+	\item
+	USA
+	\item
+	UK
+	\item
+	Canada
+	\item
+	Germany
+	\item
+	France
+	\item
+	Sweden
+	\item
+	South Korea
+	\item
+	Singapore
+\end{itemize}
+
+We construct the Israeli Economic Policy Uncertainty index
 
 
 ## Methodology
 
-Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post
-  long and consistent daily coverage of Israeli news
-  exact same phrases used by Baker, Bloom, and Davis (2016)
+Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post.
+  Long and consistent daily coverage of Israeli news
+  Exact same phrases used by Baker, Bloom, and Davis (2016)
 
- * Economic - economy, economic
- * Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
-    parliament, regulation, deregulation, legislation, taxes, tax, taxation,
-    taxed, policy,spending, budget.
- * Uncertainty - uncertainty, uncertain, not certain.
+ \begin{itemize}
+ \setlength\itemsep{2em}
+ \item
+ Economic - economy, economic
+ \item
+ Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
+ parliament, regulation, deregulation, legislation, taxes, tax, taxation,
+ taxed, policy,spending, budget.
+ \item
+ Uncertainty - uncertainty, uncertain, not certain.
+ \end{itemize}
 
 ## Methodology
+
+Economic Policy Uncertainty Index calculation:
+
+\vfill
 
 \begin{enumerate}
+\setlength\itemsep{2em}
   \item
-  Calculate the proportion of "relevant" articles in each time period (month/quarter)
+  Calculate the proportion of "relevant" articles in each time period 
+  \begin{itemize}
+    \item
+    Monthly
+    \item
+    Quarterly
+  \end{itemize}
   \item
-  Standardize to unit standard deviation and normalize to a mean of 100 
+  Standardize to unit standard deviation
+  \item
+  Scale to a mean of 100 
 \end{enumerate}
 
 ## EPU seems to capture important domestic and international events
@@ -212,7 +276,11 @@ ggplot() +
                   xend = start_date, yend = epu + 10),
               color = "blue", arrow = arrow(length = unit(4, "points"))) +
   xlab(NULL) + ylab(NULL) +
-  ggtitle("Economic policy uncertainty index for Israel")
+  ggtitle("Economic policy uncertainty index for Israel") + 
+  labs(caption = glue("Shaded areas are periods of significant",
+                      " economic slowdown in Israel")) + 
+  theme(plot.caption = element_text(hjust = 0))
+  
 
 ```
 
@@ -224,6 +292,7 @@ full_period_plot = epu_month %>%
   inner_join(epus_df, "date") %>%
   dplyr::select(-date,israel = epu) %>%
   filter(complete.cases(.)) %>%
+  rename_all(str_to_title) %>% 
   cor() %>%
   ggcorrplot::ggcorrplot(type = "lower",
                          show.diag = FALSE,
@@ -236,6 +305,7 @@ after_gfc_plot = epu_month %>%
   filter(date >= as_date("2009-01-01")) %>% 
   dplyr::select(-date,israel = epu) %>%
   filter(complete.cases(.)) %>%
+  rename_all(str_to_title) %>%
   cor() %>%
   ggcorrplot::ggcorrplot(type = "lower",
                          show.diag = FALSE,
@@ -326,11 +396,6 @@ $u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covar
 
 ```{r plot_log_levels}
 
-irf_df =  var_df  %>%
-  dplyr::select(epu_log, fx_eff_log, i_il_log, emp_il_sa_log, gdp_il_sa_log)  %>%
-  ts(start = c(1995, 2), frequency = 4)  %>%
-  VAR(p = 8, ic = "AIC", type = "both", lag.max = 8)  %>%
-  irf(n.ahead = 6,runs = 1000,ci = 0.90,impulse = "epu_log")
 
 map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   return(
@@ -370,15 +435,6 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 ## VAR estimation results
 
 ```{r plot_log_delta}
-
-var_irf_delta =  var_df  %>%
-  dplyr::select(paste0(vars_list,"_log_diff")) %>%
-  dplyr::rename_all(~str_remove(.,"_log_diff")) %>% 
-  filter(complete.cases(.)) %>% 
-  ts(start = c(1995, 2), frequency = 4)  %>%
-  VAR(p = 8, ic = "AIC", type = "both", lag.max = 8)  %>%
-  irf(n.ahead = 6,cumulative = TRUE,runs = 1000,ci = 0.90,impulse = "epu")
-
 
 map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   return(
