@@ -48,15 +48,41 @@ library(tidyverse)
 
 ```{r set_params}
 
-events_df = tribble(~event, ~category, ~start_date, ~end_date,
-                    "Intifada","crisis","2001-01-01","2003-01-01",
-                    "GFC","crisis","2008-01-01","2009-01-01",
-                    "Corona","crisis","2020-01-01","2021-01-01",
-                    "Ariel Sharon","political","2006-01-01","2006-02-01",
-                    "Social Justice","political","2011-06-01","2011-12-01",
-                    "Brexit","international","2016-06-01","2016-07-01",
-                    "Trump","international","2016-11-01","2016-12-01") %>% 
-  mutate(across(ends_with("date"),as_date))
+events_df = tribble(
+  ~ event,
+  ~ category,
+  ~ start_date,
+  ~ end_date,
+  "Intifada",
+  "crisis",
+  "2001-01-01",
+  "2003-01-01",
+  "GFC",
+  "crisis",
+  "2008-01-01",
+  "2009-01-01",
+  "Corona",
+  "crisis",
+  "2020-01-01",
+  "2021-01-01",
+  "Ariel Sharon",
+  "political",
+  "2006-01-01",
+  "2006-02-01",
+  "social justice protests",
+  "political",
+  "2011-08-01",
+  "2011-12-01",
+  "Brexit",
+  "international",
+  "2016-06-01",
+  "2016-07-01",
+  "Trump",
+  "international",
+  "2016-11-01",
+  "2016-12-01"
+) %>%
+  mutate(across(ends_with("date"), as_date))
 
 
 ```
@@ -182,6 +208,9 @@ var_irf_delta =  var_df  %>%
 
 \tableofcontents[sectionstyle=show/show,subsectionstyle=hide/hide]
 
+<!-- \tableofcontents -->
+
+# Motivation and Methodology
 ## Motivation
 
 Literature suggests that fluctuations in uncertainty might have a significant impact on economic activity
@@ -192,47 +221,40 @@ Literature suggests that fluctuations in uncertainty might have a significant im
   \item
   Employment and industrial investment
   \newline
-  (Bloom 2009)
+  {\footnotesize	(Bloom 2009)}
   \item
   Monetary policy transmission and inflation expectations 
   \newline
-  (Aastveit, Natvik, and Sola 2017)
+  {\footnotesize (Aastveit, Natvik, and Sola 2017)}
   \item
   Bank credit growth 
   \newline
-  (Bordo, Duca, and Koch 2016)
+  {\footnotesize (Bordo, Duca, and Koch 2016)}
   \item
   Financial stability 
   \newline
-  (Phan et al. 2021)
+  {\footnotesize (Phan et al. 2021)}
   \item
   De-anchorage of long-term in inflation expectations 
   \newline
-  (Dash, Rohit, and Devaguptapu 2020)
+  {\footnotesize (Dash, Rohit, and Devaguptapu 2020)}
 \end{itemize}
 
 ## Motivation
 
 A growing number of papers develop a country and region-specific EPU indexes
 
+\vfill
+
 \begin{itemize}
+\setlength\itemsep{2em}
+  \item
+  Developed countries : USA, UK, Germany, France, Sweden
 	\item
-	USA
-	\item
-	UK
-	\item
-	Canada
-	\item
-	Germany
-	\item
-	France
-	\item
-	Sweden
-	\item
-	South Korea
-	\item
-	Singapore
+  Emerging markets : South Korea, Brazil, China, Mexico, Colombia
 \end{itemize}
+
+\vfill
 
 We construct the Israeli Economic Policy Uncertainty index
 
@@ -241,18 +263,21 @@ We construct the Israeli Economic Policy Uncertainty index
 
 Data : about 500,000 articles for the 1988-2021 period from the Jerusalem Post.
   Long and consistent daily coverage of Israeli news
+  
+  \vfill
+  
   Exact same phrases used by Baker, Bloom, and Davis (2016)
 
  \begin{itemize}
  \setlength\itemsep{2em}
  \item
- Economic - economy, economic
+ \textbf{Economic} - economy, economic
  \item
- Policy - prime minister, deficit, Bank of Israel, BoI, knesset,
+ \textbf{Policy} - prime minister, deficit, Bank of Israel, BoI, knesset,
  parliament, regulation, deregulation, legislation, taxes, tax, taxation,
  taxed, policy,spending, budget.
  \item
- Uncertainty - uncertainty, uncertain, not certain.
+ \textbf{Uncertainty} - uncertainty, uncertain, not certain.
  \end{itemize}
 
 ## Methodology
@@ -277,6 +302,7 @@ Economic Policy Uncertainty Index calculation:
   Scale to a mean of 100 
 \end{enumerate}
 
+# Results
 ## EPU seems to capture important domestic and international events
 
 ```{r plot_epu}
@@ -347,16 +373,46 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
 
 ```
 
+## Israel EPU and VIX move together but also capture different aspects of uncertainty
+
+```{r plot_israel_epu_vs_vix}
+
+
+benchmark_df %>% 
+  select(date, Israel = epu, VIX = vix) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+
+```
 
 
 ## Topics EPU
 
-  * Fiscal - budget, deficit, government debt, tax, taxes, taxation,
+\textbf{Economic} and \textbf{Policy} and \textbf{Uncertainty} dictionaries and :
+
+\vfill
+
+\begin{itemize}
+\setlength\itemsep{2em}
+  \item
+  \textbf{Fiscal} - budget, deficit, government debt, tax, taxes, taxation,
   taxed, fiscal, military spending, defense spending, balanced budget,
   national debt.
-  
-  * Monetary - boi, bank of israel, money supply, open market
+  \item
+  \textbf{Monetary} - boi, bank of israel, money supply, open market
   operations, quantitive easing, monetary policy, policy rate.
+\end{itemize}
+
+  
+  
+  
 
 
 ## High levels of Monetary and Fiscal uncertainty during "local" crises
@@ -400,11 +456,12 @@ epu_month_topics %>%
 
 ```
 
-## VAR
+# Robustness
+## Robustness - Is Israel in line with common results?
 
-\begin{equation}
+\begin{equation*}
   Z_{t} = B Z_{t - 1} + u_{t}
-\end{equation}
+\end{equation*}
 
 where:
 
@@ -412,12 +469,16 @@ Z - vector of economic policy uncertainty, the employment rate,
 the nominal effective exchange rate, the nominal interest rate and
 the GDP
 
-B - coefficient matrix
+\vfill
+
+B - coefficient matrix \textcolor{red}{at 8 lags}
+
+\vfill
 
 $u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covariance matrix $\Sigma = E[u_{t}u_{t}']$
 
 
-## VAR estimation results
+## GDP responds negatively to uncertainty shocks
 
 ```{r plot_log_levels}
 
@@ -457,7 +518,7 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 
 ```
 
-## VAR estimation results
+## Robustness (log changes specification)
 
 ```{r plot_log_delta}
 
@@ -488,7 +549,7 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
              linetype = "dashed",
              color = "red") +
   xlab(NULL) + ylab(NULL) + 
-  ggtitle("Effect of orthogonal EPU shock (log levels)") + 
+  ggtitle("Effect of orthogonal EPU shock (log changes)") + 
   facet_wrap( ~ name, scales = "free")
 
 
@@ -496,3 +557,21 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 
 ```
 
+
+# Conculsion
+## Conclusion
+
+\vfill
+
+\begin{itemize}
+\setlength\itemsep{2em}
+  \item
+  We construct an Economic Policy Uncertainty Index for Israel (and Monetary
+  and Fiscal categories).
+  \item
+  The Israeli EPU index reacts to major local and international events
+  and correlates with other uncertainty measures.
+  \item
+  The results suggest that Israel EPU may be used for forecasting and monitoring
+  the Israeli economy.
+\end{itemize}
