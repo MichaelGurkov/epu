@@ -142,18 +142,17 @@ rm(url_table)
 ```{r import_vix}
 
 vix = read_csv(glue(Sys.getenv("USERPROFILE"),
-                    "\\OneDrive - Bank Of Israel\\Data\\VIX.csv")) %>% 
-  rename_all(tolower) %>% 
-  select(date, vix = close)
+                    "\\OneDrive - Bank Of Israel\\Data",
+                    "\\TASE\\vix_israel.csv")) %>% 
+  set_names(c("date","vix")) %>% 
+  mutate(date = dmy(date))
 
 vix = vix %>% 
-  # group_by(date = as.yearmon(date)) %>% 
-  # summarise(vix = mean(vix, na.rm = TRUE), .groups = "drop") %>% 
-  # mutate(date = paste("01", str_pad(month(date),2,"left",0),
-  #                          year(date),sep = "-")) %>% 
-  # mutate(date = dmy(date)) %>% 
-  filter(date >= as_date("2006-06-01"))
-
+  group_by(date = as.yearmon(date)) %>%
+  summarise(vix = mean(vix, na.rm = TRUE), .groups = "drop") %>%
+  mutate(date = paste("01", str_pad(month(date),2,"left",0),
+                           year(date),sep = "-")) %>%
+  mutate(date = dmy(date))
 
 ```
 
