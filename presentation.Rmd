@@ -421,7 +421,7 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
 
 ```
 
-## Israel EPU and VIX move together but also capture different aspects of uncertainty
+## Israel EPU and Israeli VIX move together but also capture different aspects of uncertainty
 
 ```{r plot_israel_epu_vs_vix}
 
@@ -455,7 +455,7 @@ benchmark_df %>%
   national debt.
   \item
   \textbf{Monetary} - boi, bank of israel, money supply, open market
-  operations, quantitive easing, monetary policy, policy rate.
+  operations, quantitative easing, monetary policy, policy rate.
 \end{itemize}
 
   
@@ -482,7 +482,7 @@ ggplot() +
 ```
 
 
-## Corellation between Monetary and Fiscal uncertainty drops after 2012
+## Correlation between Monetary and Fiscal uncertainty drops after 2012
 
 ```{r plot_rolling_cor}
 
