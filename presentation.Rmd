@@ -299,7 +299,7 @@ Literature suggests that fluctuations in uncertainty might have a significant im
  \item
  \textbf{Economic} - economy, economic
  \item
- \textbf{Policy} - prime minister, deficit, Bank of Israel, BoI, knesset,
+ \textbf{Policy} - prime minister, deficit, bank of israel, boi, knesset,
  parliament, regulation, deregulation, legislation, taxes, tax, taxation,
  taxed, policy,spending, budget.
  \item
@@ -308,9 +308,12 @@ Literature suggests that fluctuations in uncertainty might have a significant im
 
 ## Methodology
 
-Economic Policy Uncertainty Index calculation:
+\begin{quote}
+"... the \textcolor{blue}{economy} entered a continuing slowdown starting in the second half of 1987.This dumpened the public outlook on the future and caused increasing \textcolor{blue}{uncertainty}... 
+ the governments savings dropped during the same years, due to the slowdown which cut \textcolor{blue}{tax} revenue from business and wage earners"
+\end{quote}
 
-\vfill
+\vspace{1em}
 
 \begin{enumerate}
 \setlength\itemsep{2em}
@@ -327,6 +330,8 @@ Economic Policy Uncertainty Index calculation:
 \end{enumerate}
 
 ## Data
+
+\vspace{1em}
 
 \begin{itemize}
 \setlength\itemsep{2em}
