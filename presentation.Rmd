@@ -25,6 +25,7 @@ knitr::opts_chunk$set(
 
 ```{r load_libraries}
 
+
 library(lubridate)
 
 library(glue)
@@ -42,6 +43,8 @@ library(vars)
 library(aTSA)
 
 library(tidyverse)
+
+library(slider)
 
 ```
 
@@ -202,15 +205,6 @@ var_irf_delta =  var_df  %>%
 
 ```
 
-
-## Outline
-
-\vfill
-
-\tableofcontents[sectionstyle=show/show,subsectionstyle=hide/hide]
-
-<!-- \tableofcontents -->
-
 ## Overview
 
 \vfill
@@ -329,8 +323,6 @@ Economic Policy Uncertainty Index calculation:
     Quarterly
   \end{itemize}
   \item
-  Standardize to unit standard deviation
-  \item
   Scale to a mean of 100 
 \end{enumerate}
 
@@ -343,9 +335,11 @@ Economic Policy Uncertainty Index calculation:
   \newline
   (Long and consistent daily coverage of Israeli news)
   \item
-  About 500,000 articles
+  About 500,000 articles (about 50 a day)
   \item
   1988-2021 period
+  \item
+  Available from ProQuest
 \end{itemize}
 
 # Israeli EPU
@@ -353,9 +347,14 @@ Economic Policy Uncertainty Index calculation:
 
 ```{r plot_epu}
 
-
-ggplot() +
-  geom_line(data = epu_month, aes(x = date, y = epu)) +
+epu_month %>% 
+  mutate(ma = slide_dbl(epu, mean,.before = 2 * 12)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("EPU",
+                                        "EPU moving average (2 years)"))) %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = value, color = name)) +
+  scale_color_manual(values = c("black", "blue")) + 
   geom_rect(data = filter(events_df,category == "crisis"),
             aes(xmin = start_date,xmax = end_date,ymin = -Inf,ymax = Inf),
             alpha = 0.5,fill = "lightblue") +
@@ -374,7 +373,8 @@ ggplot() +
   ggtitle("Economic policy uncertainty index for Israel") + 
   labs(caption = glue("Shaded areas are periods of significant",
                       " economic slowdown in Israel")) + 
-  theme(plot.caption = element_text(hjust = 0))
+  theme(plot.caption = element_text(hjust = 0),
+        legend.title = element_blank())
   
 
 ```
@@ -469,11 +469,13 @@ benchmark_df %>%
 
 ggplot() +
   geom_line(data = epu_month_topics %>%
+              filter(date >= as_date("2000-01-01")) %>% 
               mutate(name = factor(name,
                                    labels = c("Fiscal EPU", "Monetary EPU"))),
             aes(x = date, y = value, color = name)) +
-  geom_rect(data = events_df,aes(xmin = start_date,xmax = end_date,
-                                 ymin = -Inf,ymax = Inf),
+  geom_rect(data = filter(events_df, category == "crisis"),
+            aes(xmin = start_date,xmax = end_date,
+                ymin = -Inf,ymax = Inf),
             alpha = 0.5, fill = "lightblue") +
   xlab(NULL) + ylab(NULL) +
   ggtitle("Economic policy uncertainty index for Israel") + 
@@ -504,8 +506,29 @@ epu_month_topics %>%
 
 ```
 
+```{r plot_rolling_cor_robust, eval=FALSE}
+
+epu_month_topics %>%
+  pivot_wider(id_cols = date) %>%
+  mutate(roll_cor = slide2_dbl(
+    .x = monetary_epu,
+    .y = fiscal_epu,
+    .f = ~ cor(.x, .y),
+    .before = 2*12,
+    .complete = TRUE
+  )) %>% 
+  filter(complete.cases(.)) %>% 
+  ggplot(aes(x = date, y = roll_cor)) + 
+  geom_line() + 
+  xlab(NULL) + ylab(NULL) + 
+  ggtitle(glue("2 year Rolling Correlations",
+               " Between Monetary and Fiscal EPU indices"))
+
+```
+
+
 # Israeli EPU and economic activity
-## Is Israel in line with common results?
+## The effect of EPU on economic activity - SVAR model
 
 \begin{equation*}
   Z_{t} = B Z_{t - 1} + u_{t}
@@ -513,17 +536,18 @@ epu_month_topics %>%
 
 where:
 
-Z - vector of economic policy uncertainty, the employment rate,
-the nominal effective exchange rate, the nominal interest rate and
-the GDP
+Z - vector of (ordered by Cholesky decomposition) economic policy uncertainty,
+the employment rate, the nominal effective exchange rate, the nominal interest
+rate and the GDP
 
 \vfill
 
-B - coefficient matrix at 5 lags
+B - coefficient matrix at 5 lags (according to AIC)
 
 \vfill
 
 $u_{t}$ - set of errors with mean zero, zero autocorrelation, and variance covariance matrix $\Sigma = E[u_{t}u_{t}']$
+
 
 
 ## GDP responds negatively to uncertainty shocks
@@ -559,6 +583,7 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   geom_hline(yintercept = 0,
              linetype = "dashed",
              color = "red") +
+  scale_y_continuous(labels = scales::percent_format()) + 
   xlab(NULL) + ylab(NULL) + 
   ggtitle("Effect of orthogonal EPU shock (log levels)") + 
   facet_wrap( ~ name, scales = "free")
@@ -599,6 +624,7 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   geom_hline(yintercept = 0,
              linetype = "dashed",
              color = "red") +
+  scale_y_continuous(labels = scales::percent_format()) + 
   xlab(NULL) + ylab(NULL) + 
   ggtitle("Effect of orthogonal EPU shock (log changes)") + 
   facet_wrap( ~ name, scales = "free")
