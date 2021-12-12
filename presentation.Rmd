@@ -159,6 +159,14 @@ vix = vix %>%
 
 ```
 
+```{r calculate_benchmark_df}
+
+benchmark_df = epu_month %>%
+  full_join(epus_df, "date") %>%
+  full_join(vix, "date")
+
+
+```
 
 
 ```{r import_var_data}
@@ -210,6 +218,7 @@ var_irf_delta =  var_df  %>%
 \vfill
 
 \begin{itemize}
+\setlength\itemsep{2em}
   \item
   Develop a granular EPU index for Israel following 
   Baker, Bloom, and Davis (2016)
@@ -309,7 +318,7 @@ Literature suggests that fluctuations in uncertainty might have a significant im
 ## Methodology
 
 \begin{quote}
-"... the \textcolor{blue}{economy} entered a continuing slowdown starting in the second half of 1987.This dumpened the public outlook on the future and caused increasing \textcolor{blue}{uncertainty}... 
+"... the \textcolor{blue}{economy} entered a continuing slowdown starting in the second half of 1987. this dumpened the public outlook on the future and caused increasing \textcolor{blue}{uncertainty}... 
  the governments savings dropped during the same years, due to the slowdown which cut \textcolor{blue}{tax} revenue from business and wage earners"
 \end{quote}
 
@@ -353,10 +362,10 @@ Literature suggests that fluctuations in uncertainty might have a significant im
 ```{r plot_epu}
 
 epu_month %>% 
-  mutate(ma = slide_dbl(epu, mean,.before = 2 * 12)) %>% 
+  mutate(ma = slide_dbl(epu, mean,.before = 1 * 12)) %>% 
   pivot_longer(-date) %>% 
   mutate(name = factor(name, labels = c("EPU",
-                                        "EPU moving average (2 years)"))) %>% 
+                                        "EPU moving average (1 year)"))) %>% 
   ggplot() +
   geom_line(aes(x = date, y = value, color = name)) +
   scale_color_manual(values = c("black", "blue")) + 
@@ -388,10 +397,6 @@ epu_month %>%
 
 
 ```{r benchmark_correlation}
-
-benchmark_df = epu_month %>%
-  full_join(epus_df, "date") %>%
-  full_join(vix, "date")
 
 full_period_plot = benchmark_df %>% 
   dplyr::select(-date,israel = epu) %>%
@@ -432,10 +437,11 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
 
 
 benchmark_df %>% 
-  select(date, Israel = epu, VIX = vix) %>% 
+  select(date,epu,vix) %>% 
   filter(complete.cases(.)) %>% 
   mutate(across(-date, scale)) %>% 
   pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("Israel EPU", "Israel VIX"))) %>% 
   ggplot(aes(x = date,
              y = value)) + 
   geom_line(aes(color = name)) + 
@@ -515,21 +521,28 @@ epu_month_topics %>%
 
 epu_month_topics %>%
   pivot_wider(id_cols = date) %>%
-  mutate(roll_cor = slide2_dbl(
+  mutate(roll_cor_2 = slide2_dbl(
     .x = monetary_epu,
     .y = fiscal_epu,
     .f = ~ cor(.x, .y),
     .before = 2*12,
     .complete = TRUE
   )) %>% 
-  filter(complete.cases(.)) %>% 
-  ggplot(aes(x = date, y = roll_cor)) + 
+  mutate(roll_cor_10 = slide2_dbl(
+    .x = monetary_epu,
+    .y = fiscal_epu,
+    .f = ~ cor(.x, .y),
+    .before = 10*12,
+    .complete = TRUE
+  )) %>%
+  # filter(complete.cases(.)) %>% 
+  select(date, contains("roll_cor")) %>% 
+  pivot_longer(-date) %>% 
+  ggplot(aes(x = date, y = value, color = name)) + 
   geom_line() + 
-  xlab(NULL) + ylab(NULL) + 
-  ggtitle(glue("2 year Rolling Correlations",
-               " Between Monetary and Fiscal EPU indices"))
+  xlab(NULL) + ylab(NULL)
 
-```
+ ```
 
 
 # Israeli EPU and economic activity
