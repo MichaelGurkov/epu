@@ -653,7 +653,7 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 ```
 
 
-# Conculsion
+# Conclusion
 ## Conclusion
 
 \vfill
@@ -670,3 +670,76 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
   The results suggest that Israel EPU may be used for forecasting and monitoring
   the Israeli economy.
 \end{itemize}
+
+# Appendix
+
+```{r import_foreign_vix}
+
+file_path = paste0(Sys.getenv("USERPROFILE"),
+                   "\\OneDrive - Bank Of Israel",
+                   "\\Data\\EPU\\vix\\VIX.xlsx")
+
+foreign_vix = map_dfr(c("euro","us"), function(temp_ind){
+  
+  temp_df = read_xlsx(file_path, sheet = temp_ind)
+  
+  temp_df = temp_df %>% 
+    mutate(date = as_date(date)) %>% 
+    rename(value = 2) %>% 
+    mutate(country = temp_ind)
+  
+  
+})
+
+
+```
+
+## US VIX
+
+```{r plot_us_vix}
+
+epus_df %>% 
+  select(date, usa) %>% 
+  inner_join(foreign_vix %>% 
+               filter(country == "us") %>% 
+               select(-country)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("US EPU", "US VIX"))) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+```
+
+## Euro VIX
+
+```{r plot_euro_vix}
+
+epus_df %>% 
+  select(date, euro) %>% 
+  inner_join(foreign_vix %>% 
+               filter(country == "euro") %>% 
+               select(-country)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("Euro EPU", "Euro VIX"))) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+```
+
+## Euro vix calculations
+
+ We draw on two newspapers per country for the European indexes: Le Monde and Le Figaro
+ for **France**, Handelsblatt and Frankfurter Allgemeine Zeitung for **Germany**,
+ Corriere Della Sera and La Stampa for **Italy**, El Mundo and El Pais for **Spain**,
+ and The Times of London and Financial Times for the **United Kingdom**.
+ 
+ The index holds stocks from nine eurozone countries: Belgium, Finland, France, Germany,
+ Ireland, Italy, Luxembourg, the Netherlands, and Spain
