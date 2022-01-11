@@ -94,13 +94,13 @@ events_df = tribble(
 ```{r import_data_epu}
 
 epu_month = read_csv(glue(Sys.getenv("USERPROFILE"),
-                       "\\OneDrive - Bank Of Israel\\Data\\",
+                       "\\OneDrive - Bank Of Israel\\Data\\BOI\\",
                        "EPU\\TDM-JP\\temp_epu_month.csv")) %>% 
   dplyr::select(date = time_period, epu = epu_scaled)
 
 
 epu_month_topics = read_csv(glue(Sys.getenv("USERPROFILE"),
-                       "\\OneDrive - Bank Of Israel\\Data\\",
+                       "\\OneDrive - Bank Of Israel\\Data\\BOI\\",
                        "EPU\\TDM-JP\\temp_epu_month_topics.csv")) %>% 
   dplyr::select(date = time_period, monetary_epu = monetary_epu_scaled,
          fiscal_epu = fiscal_epu_scaled) %>%
@@ -123,7 +123,7 @@ url_table = tribble(
 epus_df = pmap(url_table,function(name, file_name, var_name){
   
   temp_df = read_xlsx(glue(Sys.getenv("USERPROFILE"),
-                           "\\OneDrive - Bank Of Israel\\Data\\EPU",
+                           "\\OneDrive - Bank Of Israel\\Data\\BoI\\EPU",
                            "\\epus\\",file_name, ".xlsx"))
   
   temp_df = temp_df %>% 
@@ -159,6 +159,27 @@ vix = vix %>%
 
 ```
 
+```{r import_foreign_vix}
+
+file_path = paste0(Sys.getenv("USERPROFILE"),
+                   "\\OneDrive - Bank Of Israel",
+                   "\\Data\\BOI\\EPU\\vix\\VIX.xlsx")
+
+foreign_vix = map_dfr(c("euro","us"), function(temp_ind){
+  
+  temp_df = read_xlsx(file_path, sheet = temp_ind)
+  
+  temp_df = temp_df %>% 
+    mutate(date = as_date(date)) %>% 
+    rename(value = 2) %>% 
+    mutate(country = temp_ind)
+  
+  
+})
+
+
+```
+
 ```{r calculate_benchmark_df}
 
 benchmark_df = epu_month %>%
@@ -168,7 +189,6 @@ benchmark_df = epu_month %>%
 
 ```
 
-
 ```{r import_var_data}
 
 vars_list = c("epu", "i_il", "emp_il_sa",
@@ -176,7 +196,7 @@ vars_list = c("epu", "i_il", "emp_il_sa",
 
 var_df = read_excel(glue(Sys.getenv("USERPROFILE"),
                          "\\OneDrive - Bank Of Israel",
-                         "\\Data\\EPU\\EPUI",
+                         "\\Data\\BOI\\EPU\\EPUI",
                          "\\EPUI_Data_activity_ALL_q.xlsx"),
                     sheet = "DATA")
 
@@ -452,6 +472,26 @@ benchmark_df %>%
 ```
 
 
+## Similiar insights with respect to US EPU and VIX 
+
+```{r plot_us_vix}
+
+epus_df %>% 
+  select(date, usa) %>% 
+  inner_join(foreign_vix %>% 
+               filter(country == "us") %>% 
+               select(-country)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("US EPU", "US VIX"))) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+```
+
 ## Topics EPU
 
 \textbf{Economic} and \textbf{Policy} and \textbf{Uncertainty} dictionaries and :
@@ -672,47 +712,30 @@ map_dfr(c("irf", "Lower", "Upper"), function(temp_name) {
 \end{itemize}
 
 # Appendix
+## English (JPOST) and Hebrew (newspapers) produce similiar results
 
-```{r import_foreign_vix}
+```{r import_scraping_data}
 
-file_path = paste0(Sys.getenv("USERPROFILE"),
-                   "\\OneDrive - Bank Of Israel",
-                   "\\Data\\EPU\\vix\\VIX.xlsx")
+scraping_df = read_csv(paste0(Sys.getenv("USERPROFILE"),
+                              "\\OneDrive - Bank Of Israel\\Data\\BoI",
+                              "\\EPU\\Scraping - TheMarker_Calcalist_Globes_Bizportal",
+                              "\\scraping_epu_month.csv"))
 
-foreign_vix = map_dfr(c("euro","us"), function(temp_ind){
-  
-  temp_df = read_xlsx(file_path, sheet = temp_ind)
-  
-  temp_df = temp_df %>% 
-    mutate(date = as_date(date)) %>% 
-    rename(value = 2) %>% 
-    mutate(country = temp_ind)
-  
-  
-})
-
-
-```
-
-## US VIX
-
-```{r plot_us_vix}
-
-epus_df %>% 
-  select(date, usa) %>% 
-  inner_join(foreign_vix %>% 
-               filter(country == "us") %>% 
-               select(-country)) %>% 
+epu_month %>% 
+  mutate(date = as.yearmon(date))%>% 
+  inner_join(scraping_df %>% 
+               mutate(date = as.yearmon(date, format = "%Y-%m")) %>% 
+               select(date, hebrew = EPU)) %>% 
   mutate(across(-date, scale)) %>% 
   pivot_longer(-date) %>% 
-  mutate(name = factor(name, labels = c("US EPU", "US VIX"))) %>% 
-  ggplot(aes(x = date,
-             y = value)) + 
+  mutate(name = factor(name, labels = c("EPU - JPost", "EPU - hebrew newspapers"))) %>% 
+  ggplot(aes(date, value)) + 
   geom_line(aes(color = name)) + 
-  xlab(NULL) + ylab(NULL) + 
+  xlab(NULL) + ylab(NULL) + ggtitle("Comparison between JPost and Hebrew newspapers") +
   theme(legend.title = element_blank())
 
 ```
+
 
 ## Euro VIX
 
