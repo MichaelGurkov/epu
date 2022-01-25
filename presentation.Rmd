@@ -382,7 +382,7 @@ Literature suggests that fluctuations in uncertainty might have a significant im
 ```{r plot_epu}
 
 epu_month %>% 
-  mutate(ma = slide_dbl(epu, mean,.before = 1 * 12)) %>% 
+  mutate(ma = slide_mean(epu,before = 1 * 12)) %>% 
   pivot_longer(-date) %>% 
   mutate(name = factor(name, labels = c("EPU",
                                         "EPU moving average (1 year)"))) %>% 
@@ -516,6 +516,8 @@ epus_df %>%
 
 ## High levels of Monetary and Fiscal uncertainty during "local" crises
 
+\label{topics_epu}
+
 ```{r plot_epu_topics}
 
 ggplot() +
@@ -534,6 +536,7 @@ ggplot() +
 
 ```
 
+\hyperlink{smoothed_topics_epu}{\beamerbutton{smoothed EPU}}
 
 ## Correlation between Monetary and Fiscal uncertainty drops after 2012
 
@@ -556,34 +559,6 @@ epu_month_topics %>%
                " Between Monetary and Fiscal EPU indices"))
 
 ```
-
-```{r plot_rolling_cor_robust, eval=FALSE}
-
-epu_month_topics %>%
-  pivot_wider(id_cols = date) %>%
-  mutate(roll_cor_2 = slide2_dbl(
-    .x = monetary_epu,
-    .y = fiscal_epu,
-    .f = ~ cor(.x, .y),
-    .before = 2*12,
-    .complete = TRUE
-  )) %>% 
-  mutate(roll_cor_10 = slide2_dbl(
-    .x = monetary_epu,
-    .y = fiscal_epu,
-    .f = ~ cor(.x, .y),
-    .before = 10*12,
-    .complete = TRUE
-  )) %>%
-  # filter(complete.cases(.)) %>% 
-  select(date, contains("roll_cor")) %>% 
-  pivot_longer(-date) %>% 
-  ggplot(aes(x = date, y = value, color = name)) + 
-  geom_line() + 
-  xlab(NULL) + ylab(NULL)
-
- ```
-
 
 # Israeli EPU and economic activity
 ## The effect of EPU on economic activity - SVAR model
@@ -766,3 +741,32 @@ epus_df %>%
  
  The index holds stocks from nine eurozone countries: Belgium, Finland, France, Germany,
  Ireland, Italy, Luxembourg, the Netherlands, and Spain
+
+## High levels of Monetary and Fiscal uncertainty during "local" crises
+
+\label{smoothed_topics_epu}
+
+
+```{r plot_epu_topics_smoothed}
+
+ggplot() +
+  geom_line(
+    data = epu_month_topics %>%
+      filter(date >= as_date("2000-01-01")) %>%
+      group_by(name) %>%
+      mutate(value = slide_mean(value, before = 1 * 12)) %>%
+      ungroup() %>%
+      mutate(name = factor(name,
+                           labels = c("Fiscal EPU moving average (1 year)",
+                                      "Monetary EPU moving average (1 year)"))),
+    aes(x = date, y = value, color = name)) +
+  geom_rect(data = filter(events_df, category == "crisis"),
+            aes(xmin = start_date, xmax = end_date, ymin = -Inf, ymax = Inf),
+            alpha = 0.5,fill = "lightblue") +
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Economic policy uncertainty index for Israel") +
+  theme(legend.title = element_blank())
+
+```
+
+\hyperlink{topics_epu}{\beamerbutton{back to topics EPU}}
