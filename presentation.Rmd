@@ -240,13 +240,13 @@ var_irf_delta =  var_df  %>%
 \begin{itemize}
 \setlength\itemsep{2em}
   \item
-  Develop a granular EPU index for Israel following 
+  Develop a granular Economic Policy Uncertainty index for Israel following 
   Baker, Bloom, and Davis (2016)
   \begin{itemize}
     \item
     Monthly / Quarterly
     \item
-    Subcategories
+    Subcategories : Fiscal and Monetary EPU
   \end{itemize}
   \item
   Convince you that the index makes sense
@@ -264,7 +264,7 @@ var_irf_delta =  var_df  %>%
   \end{itemize}
 \end{itemize}
 # Motivation and Methodology
-## Motivation
+## Background
 
 A growing number of papers develop a country and region-specific EPU indexes
 
@@ -288,7 +288,8 @@ We construct the Israeli Economic Policy Uncertainty index
 
 ## Lit Review
 
-Literature suggests that fluctuations in uncertainty might have a significant impact on economic activity
+Literature suggests that fluctuations in policy uncertainty might have a 
+significant impact on economic activity
 
 \vfill
 
@@ -384,7 +385,7 @@ Literature suggests that fluctuations in uncertainty might have a significant im
 epu_month %>% 
   mutate(ma = slide_mean(epu,before = 1 * 12)) %>% 
   pivot_longer(-date) %>% 
-  mutate(name = factor(name, labels = c("EPU",
+  mutate(name = factor(name, labels = c("EPU (monthly)",
                                         "EPU moving average (1 year)"))) %>% 
   ggplot() +
   geom_line(aes(x = date, y = value, color = name)) +
@@ -770,3 +771,28 @@ ggplot() +
 ```
 
 \hyperlink{topics_epu}{\beamerbutton{back to topics EPU}}
+
+<!-- ## Comparison between VIX and EFU -->
+
+<!-- ```{r import_efu} -->
+
+<!-- efu_short = read_csv(paste0(Sys.getenv("USERPROFILE"), -->
+<!--                             "\\OneDrive - Bank Of Israel\\Data\\BoI", -->
+<!--                             "\\EPU\\temp_efu_month_short.csv")) %>%  -->
+<!--   select(date = time_period, efu = epu_scaled) %>%  -->
+<!--   mutate(date = as.yearmon(date, format = "%Y-%m")) -->
+
+<!-- ``` -->
+
+<!-- ```{r plot_efu_vix} -->
+
+<!-- efu_short %>%  -->
+<!--   inner_join(vix %>%  -->
+<!--                mutate(date = as.yearmon(date))) %>%  -->
+<!--   mutate(across(-date, scale)) %>%  -->
+<!--   pivot_longer(-date) %>%  -->
+<!--   ggplot(aes(date, value)) +  -->
+<!--   geom_line(aes(color = name)) -->
+
+<!-- ``` -->
+
