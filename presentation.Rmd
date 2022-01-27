@@ -772,27 +772,8 @@ ggplot() +
 
 \hyperlink{topics_epu}{\beamerbutton{back to topics EPU}}
 
-<!-- ## Comparison between VIX and EFU -->
-
-<!-- ```{r import_efu} -->
-
-<!-- efu_short = read_csv(paste0(Sys.getenv("USERPROFILE"), -->
-<!--                             "\\OneDrive - Bank Of Israel\\Data\\BoI", -->
-<!--                             "\\EPU\\temp_efu_month_short.csv")) %>%  -->
-<!--   select(date = time_period, efu = epu_scaled) %>%  -->
-<!--   mutate(date = as.yearmon(date, format = "%Y-%m")) -->
-
-<!-- ``` -->
-
-<!-- ```{r plot_efu_vix} -->
-
-<!-- efu_short %>%  -->
-<!--   inner_join(vix %>%  -->
-<!--                mutate(date = as.yearmon(date))) %>%  -->
-<!--   mutate(across(-date, scale)) %>%  -->
-<!--   pivot_longer(-date) %>%  -->
-<!--   ggplot(aes(date, value)) +  -->
-<!--   geom_line(aes(color = name)) -->
-
-<!-- ``` -->
-
+## Global Economic Policy Uncertainty Index
+The GEPU Index is a GDP-weighted average of national EPU indices for 21
+countries: Australia, Brazil, Canada, Chile, China, Colombia, France, Germany,
+Greece, India, Ireland, Italy, Japan, Mexico, the Netherlands, Russia,
+South Korea, Spain, Sweden, the United Kingdom, and the United States.
