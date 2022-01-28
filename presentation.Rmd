@@ -2,7 +2,7 @@
 title: "Measuring Economic Policy Uncertainty for the Israeli Economy"
 author: "Yaakov Chen-Zion, Michael Gurkov and Nimrod Segev"
 institute: "Bank of Israel \\newline Research Department \\newline \\newline Any views expressed in the Discussion Paper are those of the authors and do not necessarily reflect those of the Bank of Israel"
-date: "13 December, 2021"
+date: "30 January, 2022"
 classoption: t
 output:
   beamer_presentation:
@@ -327,13 +327,13 @@ significant impact on economic activity
  \begin{itemize}
  \setlength\itemsep{2em}
  \item
- \textbf{Economic} - economy, economic
+ \textcolor{blue}{Economic} - economy, economic
  \item
- \textbf{Policy} - prime minister, deficit, bank of israel, boi, knesset,
+ \textcolor{blue}{Policy} - prime minister, deficit, bank of israel, boi, knesset,
  parliament, regulation, deregulation, legislation, taxes, tax, taxation,
  taxed, policy,spending, budget.
  \item
- \textbf{Uncertainty} - uncertainty, uncertain, not certain.
+ \textcolor{blue}{Uncertainty} - uncertainty, uncertain, not certain.
  \end{itemize}
 
 ## Methodology
@@ -383,10 +383,10 @@ significant impact on economic activity
 ```{r plot_epu}
 
 epu_month %>% 
-  mutate(ma = slide_mean(epu,before = 1 * 12)) %>% 
+  mutate(ma = slide_mean(epu,before = 12,complete = TRUE)) %>% 
   pivot_longer(-date) %>% 
   mutate(name = factor(name, labels = c("EPU (monthly)",
-                                        "EPU moving average (1 year)"))) %>% 
+                                        "EPU (1 year moving average)"))) %>% 
   ggplot() +
   geom_line(aes(x = date, y = value, color = name)) +
   scale_color_manual(values = c("black", "blue")) + 
@@ -416,7 +416,6 @@ epu_month %>%
 
 ## EPU tends to move together with other measures of uncertainty
 
-
 ```{r benchmark_correlation}
 
 full_period_plot = benchmark_df %>% 
@@ -426,6 +425,7 @@ full_period_plot = benchmark_df %>%
   ggcorrplot::ggcorrplot(type = "lower",
                          show.diag = FALSE,
                          lab = TRUE,
+                         lab_size = c(rep(4.5,4), rep(3,6)),
                          ggtheme = theme_light()) + 
   ggtitle("Full Period")
 
@@ -437,6 +437,7 @@ after_gfc_plot = benchmark_df %>%
   ggcorrplot::ggcorrplot(type = "lower",
                          show.diag = FALSE,
                          lab = TRUE,
+                         lab_size = c(rep(4,4), rep(3,6)),
                          ggtheme = theme_light()) + 
   ggtitle("After GFC")
 
@@ -454,15 +455,21 @@ cowplot::plot_grid(full_period_plot + theme(legend.position = "none"),
 
 ## Israel EPU and Israeli VIX move together but also capture different aspects of uncertainty
 
-```{r plot_israel_epu_vs_vix}
+\label{israel_vix_smoothed}
 
+
+```{r plot_israel_epu_vs_vix_smoothed, fig.height=6.5}
 
 benchmark_df %>% 
   select(date,epu,vix) %>% 
   filter(complete.cases(.)) %>% 
-  mutate(across(-date, scale)) %>% 
+  mutate(across(-date, ~scale(.)[,1])) %>%
+  mutate(across(-date, ~slide_mean(.,before = 3,
+                                   complete = TRUE))) %>% 
   pivot_longer(-date) %>% 
-  mutate(name = factor(name, labels = c("Israel EPU", "Israel VIX"))) %>% 
+  mutate(name = factor(name,
+                       labels = c("Israel EPU (3 months moving average)",
+                                  "Israel VIX (3 months moving average)"))) %>% 
   ggplot(aes(x = date,
              y = value)) + 
   geom_line(aes(color = name)) + 
@@ -472,19 +479,29 @@ benchmark_df %>%
 
 ```
 
+\vspace{-1em}
+
+\hyperlink{israel_vix}{\beamerbutton{Israel VIX}}
+
 
 ## Similiar insights with respect to US EPU and VIX 
 
-```{r plot_us_vix}
+\label{us_vix_smoothed}
+
+```{r plot_us_vix_smoothed, fig.height=7}
 
 epus_df %>% 
   select(date, usa) %>% 
   inner_join(foreign_vix %>% 
                filter(country == "us") %>% 
                select(-country)) %>% 
-  mutate(across(-date, scale)) %>% 
+  mutate(across(-date, ~scale(.)[,1])) %>% 
+  mutate(across(-date, ~slide_mean(.,before = 3,
+                                   complete = TRUE))) %>% 
   pivot_longer(-date) %>% 
-  mutate(name = factor(name, labels = c("US EPU", "US VIX"))) %>% 
+  mutate(name = factor(name,
+                       labels = c("US EPU (3 months moving average)",
+                                  "US VIX (3 months moving average)"))) %>% 
   ggplot(aes(x = date,
              y = value)) + 
   geom_line(aes(color = name)) + 
@@ -493,20 +510,24 @@ epus_df %>%
 
 ```
 
+\vspace{-1em}
+
+\hyperlink{us_vix}{\beamerbutton{US VIX}}
+
 ## Topics EPU
 
-\textbf{Economic} and \textbf{Policy} and \textbf{Uncertainty} dictionaries and :
+\textcolor{blue}{Economic} and \textcolor{blue}{Policy} and \textcolor{blue}{Uncertainty} dictionaries and :
 
 \vfill
 
 \begin{itemize}
 \setlength\itemsep{2em}
   \item
-  \textbf{Fiscal} - budget, deficit, government debt, tax, taxes, taxation,
+  \textcolor{blue}{Fiscal} - budget, deficit, government debt, tax, taxes, taxation,
   taxed, fiscal, military spending, defense spending, balanced budget,
   national debt.
   \item
-  \textbf{Monetary} - boi, bank of israel, money supply, open market
+  \textcolor{blue}{Monetary} - boi, bank of israel, money supply, open market
   operations, quantitative easing, monetary policy, policy rate.
 \end{itemize}
 
@@ -515,29 +536,37 @@ epus_df %>%
   
 
 
-## High levels of Monetary and Fiscal uncertainty during "local" crises
+## Monetary and Fiscal EPU - decoupling?
 
-\label{topics_epu}
+\label{smoothed_topics_epu}
 
-```{r plot_epu_topics}
+
+```{r plot_epu_topics_smoothed, fig.height=7}
 
 ggplot() +
-  geom_line(data = epu_month_topics %>%
-              filter(date >= as_date("2000-01-01")) %>% 
-              mutate(name = factor(name,
-                                   labels = c("Fiscal EPU", "Monetary EPU"))),
-            aes(x = date, y = value, color = name)) +
+  geom_line(
+    data = epu_month_topics %>%
+      filter(date >= as_date("2000-01-01")) %>%
+      group_by(name) %>%
+      mutate(value = slide_mean(value, before = 1 * 12,
+                                complete = TRUE)) %>%
+      ungroup() %>%
+      mutate(name = factor(name,
+                           labels = c("Fiscal EPU (1 year moving average)",
+                                      "Monetary EPU (1 year moving average)"))),
+    aes(x = date, y = value, color = name)) +
   geom_rect(data = filter(events_df, category == "crisis"),
-            aes(xmin = start_date,xmax = end_date,
-                ymin = -Inf,ymax = Inf),
-            alpha = 0.5, fill = "lightblue") +
+            aes(xmin = start_date, xmax = end_date, ymin = -Inf, ymax = Inf),
+            alpha = 0.5,fill = "lightblue") +
   xlab(NULL) + ylab(NULL) +
-  ggtitle("Economic policy uncertainty index for Israel") + 
+  ggtitle("Economic policy uncertainty index for Israel") +
   theme(legend.title = element_blank())
 
 ```
 
-\hyperlink{smoothed_topics_epu}{\beamerbutton{smoothed EPU}}
+\vspace{-1em}
+
+\hyperlink{topics_epu}{\beamerbutton{topics EPU}}
 
 ## Correlation between Monetary and Fiscal uncertainty drops after 2012
 
@@ -713,6 +742,58 @@ epu_month %>%
 ```
 
 
+## Israel EPU and Israeli VIX move together but also capture different aspects of uncertainty
+
+\label{israel_vix}
+
+```{r plot_israel_epu_vs_vix, fig.height=6.5}
+
+
+benchmark_df %>% 
+  select(date,epu,vix) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("Israel EPU", "Israel VIX"))) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+
+```
+
+\vspace{-1em}
+
+\hyperlink{israel_vix_smoothed}{\beamerbutton{back to Israel VIX smoothed}}
+
+## Similiar insights with respect to US EPU and VIX 
+
+\label{us_vix}
+
+```{r plot_us_vix, fig.height=7}
+
+epus_df %>% 
+  select(date, usa) %>% 
+  inner_join(foreign_vix %>% 
+               filter(country == "us") %>% 
+               select(-country)) %>% 
+  mutate(across(-date, scale)) %>% 
+  pivot_longer(-date) %>% 
+  mutate(name = factor(name, labels = c("US EPU", "US VIX"))) %>% 
+  ggplot(aes(x = date,
+             y = value)) + 
+  geom_line(aes(color = name)) + 
+  xlab(NULL) + ylab(NULL) + 
+  theme(legend.title = element_blank())
+
+```
+
+\vspace{-1em}
+
+\hyperlink{us_vix_smoothed}{\beamerbutton{back to US VIX smoothed}}
+
 ## Euro VIX
 
 ```{r plot_euro_vix}
@@ -735,42 +816,51 @@ epus_df %>%
 
 ## Euro vix calculations
 
- We draw on two newspapers per country for the European indexes: Le Monde and Le Figaro
- for **France**, Handelsblatt and Frankfurter Allgemeine Zeitung for **Germany**,
- Corriere Della Sera and La Stampa for **Italy**, El Mundo and El Pais for **Spain**,
- and The Times of London and Financial Times for the **United Kingdom**.
+\vfill
+
+ \begin{itemize}
+ \item
+ Euro EPU - two newspapers per country for the European indexes: 
+ Le Monde and Le Figaro for \textcolor{blue}{France},
+ Handelsblatt and Frankfurter Allgemeine Zeitung for \textcolor{blue}{Germany},
+ Corriere Della Sera and La Stampa for \textcolor{blue}{Italy},
+ El Mundo and El Pais for \textcolor{blue}{Spain} and The Times of London and
+ Financial Times for the \textcolor{red}{United Kingdom}.
+ \item
+ Euro VIX - stocks from nine eurozone countries: \textcolor{red}{Belgium},
+ \textcolor{red}{Finland}, \textcolor{blue}{France},
+ \textcolor{blue}{Germany}, \textcolor{red}{Ireland},
+ \textcolor{blue}{Italy}, \textcolor{red}{Luxembourg},
+ \textcolor{red}{the Netherlands}, and \textcolor{blue}{Spain}
  
- The index holds stocks from nine eurozone countries: Belgium, Finland, France, Germany,
- Ireland, Italy, Luxembourg, the Netherlands, and Spain
+ \end{itemize}
 
-## High levels of Monetary and Fiscal uncertainty during "local" crises
+## Monetary and Fiscal EPU - decoupling?
 
-\label{smoothed_topics_epu}
+\label{topics_epu}
 
-
-```{r plot_epu_topics_smoothed}
+```{r plot_epu_topics, fig.height=7}
 
 ggplot() +
-  geom_line(
-    data = epu_month_topics %>%
-      filter(date >= as_date("2000-01-01")) %>%
-      group_by(name) %>%
-      mutate(value = slide_mean(value, before = 1 * 12)) %>%
-      ungroup() %>%
-      mutate(name = factor(name,
-                           labels = c("Fiscal EPU moving average (1 year)",
-                                      "Monetary EPU moving average (1 year)"))),
-    aes(x = date, y = value, color = name)) +
+  geom_line(data = epu_month_topics %>%
+              filter(date >= as_date("2000-01-01")) %>% 
+              mutate(name = factor(name,
+                                   labels = c("Fiscal EPU", "Monetary EPU"))),
+            aes(x = date, y = value, color = name)) +
   geom_rect(data = filter(events_df, category == "crisis"),
-            aes(xmin = start_date, xmax = end_date, ymin = -Inf, ymax = Inf),
-            alpha = 0.5,fill = "lightblue") +
+            aes(xmin = start_date,xmax = end_date,
+                ymin = -Inf,ymax = Inf),
+            alpha = 0.5, fill = "lightblue") +
   xlab(NULL) + ylab(NULL) +
-  ggtitle("Economic policy uncertainty index for Israel") +
+  ggtitle("Economic policy uncertainty index for Israel") + 
   theme(legend.title = element_blank())
 
 ```
 
-\hyperlink{topics_epu}{\beamerbutton{back to topics EPU}}
+
+\vspace{-1em}
+
+\hyperlink{smoothed_topics_epu}{\beamerbutton{smoothed EPU}}
 
 ## Global Economic Policy Uncertainty Index
 The GEPU Index is a GDP-weighted average of national EPU indices for 21
